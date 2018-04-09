@@ -7,7 +7,7 @@ The description of file format could be found [here](www.starcraftai.com/wiki/CH
 
 ## Development
 
-You should have boost iostreams in your search path. You could do that using [VCPkg](http://github.com/Microsoft/vcpkg)
+You could have use boost iostreams in your search path. You could do that using [VCPkg](http://github.com/Microsoft/vcpkg)
 
 	vcpkg install boost-iostreams
 
