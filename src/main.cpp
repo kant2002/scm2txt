@@ -113,6 +113,82 @@ private:
 	HANDLE hFile;
 };
 
+class mpq_file_streambuf: public std::streambuf {
+public:
+	mpq_file_streambuf(HANDLE hArchive, const char* fileName)
+		: hFile(NULL)
+	{
+		if (!SFileOpenFileEx(hArchive, fileName, SFILE_OPEN_FROM_MPQ, &hFile))
+		{
+			hFile = NULL;
+		}
+	}
+
+	bool isValid() const { return hFile != NULL; }
+
+protected:
+	virtual int underflow()
+	{
+		DWORD dwRead = 0;
+		setg(&ch, &ch, &ch + 1);
+		if (!SFileReadFile(hFile, &ch, 1, &dwRead, NULL))
+		{
+			if (dwRead == 0)
+			{
+				return traits_type::eof();
+			}
+
+			return dwRead;
+		}
+
+		return dwRead;
+	}
+	pos_type seekoff(off_type off,
+		std::ios_base::seekdir dir,
+		std::ios_base::openmode which = std::ios_base::in)
+	{
+		DWORD seekMethod = 0;
+		if (dir == std::ios_base::beg)
+		{
+			seekMethod = 0;
+		}
+		else if (dir == std::ios_base::cur)
+		{
+			seekMethod = 1;
+		}
+		else if (dir == std::ios_base::end)
+		{
+			seekMethod = 2;
+		}
+
+		int64_t position = static_cast<int64_t>(off);
+		LONG hPosition = 0;
+		return SFileSetFilePointer(hFile, static_cast<LONG>(position), &hPosition, seekMethod);
+	}
+
+private:
+	char ch;
+	HANDLE hFile;
+};
+
+class mpq_file_istream : public std::istream {
+public:
+	mpq_file_istream(HANDLE hArchive, const char* fileName)
+		: istream(&_buf), _buf(hArchive, fileName)
+	{
+	}
+
+	mpq_file_streambuf* component()
+	{
+		return &_buf;
+	}
+private:
+	mpq_file_streambuf _buf;
+};
+
+// typedef io::stream<mpq_file_source> mpq_file_stream;
+typedef mpq_file_istream mpq_file_stream;
+
 void printUsage()
 {
 	cout << "scm2txt <mapfile>" << endl;
@@ -198,17 +274,17 @@ struct map_location
 };
 
 template <typename T>
-void read_data(io::stream<mpq_file_source>& map, T& data)
+void read_data(mpq_file_stream& map, T& data)
 {
 	map.read(reinterpret_cast<char*>(&data), sizeof(T));
 }
 
-void skip_header(io::stream<mpq_file_source>& map, chunkheader& header)
+void skip_header(mpq_file_stream& map, chunkheader& header)
 {
 	io::seek(map, header.size, std::ios_base::cur);
 }
 
-void parse_map_type(io::stream<mpq_file_source>& map)
+void parse_map_type(mpq_file_stream& map)
 {
 	map_type map_type;
 	read_data(map, map_type);
@@ -216,7 +292,7 @@ void parse_map_type(io::stream<mpq_file_source>& map)
 	cout << to_name(map_type.scenario_type) << endl;
 }
 
-void parse_map_version(io::stream<mpq_file_source>& map)
+void parse_map_version(mpq_file_stream& map)
 {
 	map_version version;
 	read_data(map, version);
@@ -301,7 +377,7 @@ constexpr const char* decode_race(uint16_t race)
 	return "Unknown";
 }
 
-void parse_player_types(const char* section_header, io::stream<mpq_file_source>& map)
+void parse_player_types(const char* section_header, mpq_file_stream& map)
 {
 	uint8_t player_data[12];
 	read_data(map, player_data);
@@ -319,7 +395,7 @@ void parse_player_types(const char* section_header, io::stream<mpq_file_source>&
 	cout << endl;
 }
 
-void parse_tileset(io::stream<mpq_file_source>& map)
+void parse_tileset(mpq_file_stream& map)
 {
 	uint16_t tileset;
 	read_data(map, tileset);
@@ -327,7 +403,7 @@ void parse_tileset(io::stream<mpq_file_source>& map)
 	cout << decode_tileset(tileset) << endl;
 }
 
-void parse_race(io::stream<mpq_file_source>& map)
+void parse_race(mpq_file_stream& map)
 {
 	uint8_t races[12];
 	read_data(map, races);
@@ -345,7 +421,7 @@ void parse_race(io::stream<mpq_file_source>& map)
 	cout << endl;
 }
 
-void parse_map_data(io::stream<mpq_file_source>& map, map_dimensions dimensions, uint16_t* map_data)
+void parse_map_data(mpq_file_stream& map, map_dimensions dimensions, uint16_t* map_data)
 {
 	map.read(reinterpret_cast<char*>(map_data), 2 * dimensions.width * dimensions.height);
 	int counter = 0;
@@ -368,7 +444,7 @@ void parse_map_data(io::stream<mpq_file_source>& map, map_dimensions dimensions,
 	}
 }
 
-void parse_placed_unit(io::stream<mpq_file_source>& map, chunkheader header)
+void parse_placed_unit(mpq_file_stream& map, chunkheader header)
 {
 	cout << "UNITS" << endl;
 	int unitsCount = header.size / 36;
@@ -398,7 +474,7 @@ void parse_placed_unit(io::stream<mpq_file_source>& map, chunkheader header)
 	}
 }
 
-void parse_fogofwar(io::stream<mpq_file_source>& map, map_dimensions dimensions, uint8_t* map_data)
+void parse_fogofwar(mpq_file_stream& map, map_dimensions dimensions, uint8_t* map_data)
 {
 	map.read(reinterpret_cast<char*>(map_data), dimensions.width * dimensions.height);
 	int counter = 0;
@@ -446,7 +522,7 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	io::stream<mpq_file_source> map(hArchive, SCM_INTERNAL_FILE);
+	mpq_file_stream map(hArchive, SCM_INTERNAL_FILE);
 	if (!map.component()->isValid())
 	{
 		cerr << "Failed to extract the list of files" << endl;
