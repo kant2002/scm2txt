@@ -1,13 +1,15 @@
 #include <iostream>
 #include <string>
 #include <iosfwd>
+#include <StormLib.h>
+#if USE_BOOST_STREAMS
 #include <boost/iostreams/categories.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/iostreams/device/file.hpp>
-#include <StormLib.h>
-using namespace std;
 namespace io = boost::iostreams;
+#endif
+using namespace std;
 
 #define CHARLIST(x) (char)(x & 0xFF), (char)((x & 0xFF00) >> 8), (char)((x & 0xFF0000) >> 16), (char)((x & 0xFF000000) >> 24)
 
@@ -26,6 +28,7 @@ string to_name(uint32_t code)
 
 const char* SCM_INTERNAL_FILE = "staredit\\scenario.chk";
 
+#if USE_BOOST_STREAMS
 class mpq_file_source {
 public:
 	typedef char        char_type;
@@ -113,6 +116,8 @@ private:
 	HANDLE hFile;
 };
 
+typedef io::stream<mpq_file_source> mpq_file_stream;
+#else
 class mpq_file_streambuf: public std::streambuf {
 public:
 	mpq_file_streambuf(HANDLE hArchive, const char* fileName)
@@ -130,17 +135,15 @@ protected:
 	virtual int underflow()
 	{
 		DWORD dwRead = 0;
-		setg(&ch, &ch, &ch + 1);
 		if (!SFileReadFile(hFile, &ch, 1, &dwRead, NULL))
 		{
 			if (dwRead == 0)
 			{
 				return traits_type::eof();
 			}
-
-			return dwRead;
 		}
 
+		setg(&ch, &ch, &ch + 1);
 		return dwRead;
 	}
 	pos_type seekoff(off_type off,
@@ -186,8 +189,8 @@ private:
 	mpq_file_streambuf _buf;
 };
 
-// typedef io::stream<mpq_file_source> mpq_file_stream;
 typedef mpq_file_istream mpq_file_stream;
+#endif
 
 void printUsage()
 {
@@ -281,7 +284,11 @@ void read_data(mpq_file_stream& map, T& data)
 
 void skip_header(mpq_file_stream& map, chunkheader& header)
 {
+#if USE_BOOST_STREAMS
 	io::seek(map, header.size, std::ios_base::cur);
+#else
+	map.seekg(header.size, std::ios_base::cur);
+#endif
 }
 
 void parse_map_type(mpq_file_stream& map)
@@ -534,7 +541,7 @@ int main(int argc, char** argv)
 	uint16_t map_data[256 * 256];
 	uint8_t map_visibility[256 * 256];
 	ZeroMemory(map_data, sizeof(map_data));
-	while (!map.eof())
+	while (!map.eof() && map.good())
 	{
 		chunkheader header;
 		map.read(reinterpret_cast<char*>(&header), sizeof(chunkheader));
@@ -599,6 +606,8 @@ int main(int argc, char** argv)
 			skip_header(map, header);
 			break;
 		case to_code("MRGN"):
+			skip_header(map, header);
+			break;
 		case to_code("TRIG"):
 		case to_code("MBRF"):
 		case to_code("SPRP"):
