@@ -9,9 +9,17 @@ if (Boost_FOUND)
 else()
 	message("Use STL streams")
 endif()
+
+include_directories("../include")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /ZI")
 
+add_library(libscm
+	mapreader.cpp)
+
+target_link_libraries(libscm storm)
+
+include_directories("../include")
 add_executable(scm2txt
     main.cpp)
 
-target_link_libraries(scm2txt storm)
+target_link_libraries(scm2txt libscm)
