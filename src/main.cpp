@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 #include "mapreader.h"
+#include "tilesetreader.h"
 using namespace std;
 
 #define CHARLIST(x) (char)(x & 0xFF), (char)((x & 0xFF00) >> 8), (char)((x & 0xFF0000) >> 16), (char)((x & 0xFF000000) >> 24)
@@ -14,7 +15,7 @@ string to_name(uint32_t code)
 
 void printUsage()
 {
-	cout << "scm2txt <mapfile>" << endl;
+	cout << "scm2txt <mapfile> <sc_dir>" << endl;
 }
 
 struct map_type
@@ -154,6 +155,11 @@ void print_race(starcraft_map& scm)
 	cout << endl;
 }
 
+std::string print_tile(tile_t tile)
+{
+	return to_string(tile.visible) + "_" + to_string(tile.explored) + "_" + to_string(tile.flags);
+}
+
 void print_map_data(starcraft_map& scm)
 {
 	int counter = 0;
@@ -168,7 +174,8 @@ void print_map_data(starcraft_map& scm)
 				cout << ",";
 			}
 
-			cout << scm.map_data[counter];
+			//cout << scm.map_data[counter];
+			cout << print_tile(scm.tiles[counter]);
 			counter++;
 		}
 
@@ -251,7 +258,7 @@ void print(starcraft_map_file& scm)
 
 int main(int argc, char** argv)
 {
-	if (argc < 2)
+	if (argc < 3)
 	{
 		printUsage();
 		return -1;
@@ -261,8 +268,26 @@ int main(int argc, char** argv)
 	starcraft_map_file scm;
 	starcraft_parse_status status;
 
-	cout << "Opening '" << mapFile << "'..." << endl;
-	parse_starcraft_map(mapFile.c_str(), scm, status);
+	string starcraftDir(argv[2]);
+	auto tilesetProvider = [&](int tilesetIndex, tileset_data& tileset, starcraft_tileset_parse_status& tileset_status)
+	{
+		parse_starcraft_tileset(argv[2], scm.map.tileset, tileset, tileset_status);
+		switch (tileset_status.error_code)
+		{
+		case StarcraftTilesetParse_FileOpenError:
+			cerr << "Failed to open the tileset file" << endl;
+			break;
+		case StarcraftTilesetParse_CV5Missing:
+			cerr << "CV5 file for specified tileset is missing" << endl;
+			break;
+		case StarcraftTilesetParse_VF4Missing:
+			cerr << "VF4 file for specified tileset is missing" << endl;
+			break;
+		}
+	};
+
+	cerr << "Opening '" << mapFile << "'..." << endl;
+	parse_starcraft_map(mapFile.c_str(), tilesetProvider, scm, status);
 	switch (status.error_code)
 	{
 	case StarcraftMapParse_FileOpenError:
@@ -275,7 +300,10 @@ int main(int argc, char** argv)
 		cerr << "Failed to extract the list of files" << endl;
 		break;
 	case StarcraftMapParse_UnexpectedFileHeader:
-		cout << "Unknown header name: " << to_name(status.failedHeader) << endl;
+		cerr << "Unknown header name: " << to_name(status.failedHeader) << endl;
+		break;
+	case StarcraftMapParse_TilesetParseError:
+		cerr << "Tileset parse error" << endl;
 		break;
 	default:
 		print(scm);

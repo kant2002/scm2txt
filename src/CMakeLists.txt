@@ -14,7 +14,8 @@ include_directories("../include")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /ZI")
 
 add_library(libscm
-	mapreader.cpp)
+	mapreader.cpp
+	tilesetreader.cpp)
 
 target_link_libraries(libscm storm)
 

@@ -2,13 +2,7 @@
 #include <iosfwd>
 #include <iostream>
 #include <StormLib.h>
-#if USE_BOOST_STREAMS
-#include <boost/iostreams/categories.hpp>
-#include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/stream.hpp>
-#include <boost/iostreams/device/file.hpp>
-namespace io = boost::iostreams;
-#endif
+#include "mpq.h"
 using namespace std;
 
 constexpr uint32_t to_code(char section_name[4])
@@ -37,169 +31,7 @@ struct verification_code
 
 const char* SCM_INTERNAL_FILE = "staredit\\scenario.chk";
 
-#if USE_BOOST_STREAMS
-class mpq_file_source {
-public:
-	typedef char        char_type;
-	typedef io::seekable_device_tag  category;
 
-	mpq_file_source(HANDLE hArchive, const char* fileName)
-		: hFile(NULL)
-	{
-		if (!SFileOpenFileEx(hArchive, fileName, SFILE_OPEN_FROM_MPQ, &hFile))
-		{
-			hFile = NULL;
-		}
-	}
-
-	void close()
-	{
-		if (hFile != NULL)
-		{
-			SFileCloseFile(hFile);
-			hFile = NULL;
-		}
-	}
-
-	bool isValid() const { return hFile != NULL; }
-
-	std::streamsize read(char* s, std::streamsize n)
-	{
-		// Read up to n characters from the underlying data source
-		// into the buffer s, returning the number of characters
-		// read; return -1 to indicate EOF
-		DWORD dwRead = 0;
-		if (!SFileReadFile(hFile, s, n, &dwRead, NULL))
-		{
-			if (dwRead == 0)
-			{
-				return -1;
-			}
-
-			return dwRead;
-		}
-
-		return dwRead;
-	}
-	std::streamsize write(const char* s, std::streamsize n)
-	{
-		// Write up to n characters to the underlying 
-		// data sink into the buffer s, returning the 
-		// number of characters written
-		return 0;
-	}
-
-	io::stream_offset seek(io::stream_offset off, std::ios_base::seekdir way)
-	{
-		// Seek to position off and return the new stream 
-		// position. The argument way indicates how off is
-		// interpretted:
-		//    - std::ios_base::beg indicates an offset from the 
-		//      sequence beginning 
-		//    - std::ios_base::cur indicates an offset from the 
-		//      current character position 
-		//    - std::ios_base::end indicates an offset from the 
-		//      sequence end 
-		DWORD seekMethod = 0;
-		if (way == std::ios_base::beg)
-		{
-			seekMethod = 0;
-		}
-		else if (way == std::ios_base::cur)
-		{
-			seekMethod = 1;
-		}
-		else if (way == std::ios_base::end)
-		{
-			seekMethod = 2;
-		}
-
-		int64_t position = static_cast<int64_t>(off);
-		LONG hPosition = 0;
-		return SFileSetFilePointer(hFile, static_cast<LONG>(position), &hPosition, seekMethod);
-	}
-
-
-	/* Other members */
-private:
-	HANDLE hFile;
-};
-
-typedef io::stream<mpq_file_source> mpq_file_stream;
-#else
-class mpq_file_streambuf : public std::streambuf {
-public:
-	mpq_file_streambuf(HANDLE hArchive, const char* fileName)
-		: hFile(NULL)
-	{
-		if (!SFileOpenFileEx(hArchive, fileName, SFILE_OPEN_FROM_MPQ, &hFile))
-		{
-			hFile = NULL;
-		}
-	}
-
-	bool isValid() const { return hFile != NULL; }
-
-protected:
-	virtual int underflow()
-	{
-		DWORD dwRead = 0;
-		if (!SFileReadFile(hFile, &ch, 1, &dwRead, NULL))
-		{
-			if (dwRead == 0)
-			{
-				return traits_type::eof();
-			}
-		}
-
-		setg(&ch, &ch, &ch + 1);
-		return dwRead;
-	}
-	pos_type seekoff(off_type off,
-		std::ios_base::seekdir dir,
-		std::ios_base::openmode which = std::ios_base::in)
-	{
-		DWORD seekMethod = 0;
-		if (dir == std::ios_base::beg)
-		{
-			seekMethod = 0;
-		}
-		else if (dir == std::ios_base::cur)
-		{
-			seekMethod = 1;
-		}
-		else if (dir == std::ios_base::end)
-		{
-			seekMethod = 2;
-		}
-
-		int64_t position = static_cast<int64_t>(off);
-		LONG hPosition = 0;
-		return SFileSetFilePointer(hFile, static_cast<LONG>(position), &hPosition, seekMethod);
-	}
-
-private:
-	char ch;
-	HANDLE hFile;
-};
-
-class mpq_file_istream : public std::istream {
-public:
-	mpq_file_istream(HANDLE hArchive, const char* fileName)
-		: istream(&_buf), _buf(hArchive, fileName)
-	{
-	}
-
-	mpq_file_streambuf* component()
-	{
-		return &_buf;
-	}
-private:
-	mpq_file_streambuf _buf;
-};
-
-typedef mpq_file_istream mpq_file_stream;
-#endif
 
 template <typename T>
 void read_data(mpq_file_stream& map, T& data)
@@ -210,10 +42,25 @@ void read_data(mpq_file_stream& map, T& data)
 void skip_header(mpq_file_stream& map, chunkheader& header)
 {
 #if USE_BOOST_STREAMS
-	io::seek(map, header.size, std::ios_base::cur);
+	boost::iostreams::seek(map, header.size, std::ios_base::cur);
 #else
 	map.seekg(header.size, std::ios_base::cur);
 #endif
+}
+
+void tiles_flags_and(starcraft_map& scm, size_t offset_x, size_t offset_y, size_t width, size_t height, int flags) {
+	for (size_t y = offset_y; y != offset_y + height; ++y) {
+		for (size_t x = offset_x; x != offset_x + width; ++x) {
+			scm.tiles[x + y * scm.dimensions.width].flags &= flags;
+		}
+	}
+}
+void tiles_flags_or(starcraft_map& scm, size_t offset_x, size_t offset_y, size_t width, size_t height, int flags) {
+	for (size_t y = offset_y; y != offset_y + height; ++y) {
+		for (size_t x = offset_x; x != offset_x + width; ++x) {
+			scm.tiles[x + y * scm.dimensions.width].flags |= flags;
+		}
+	}
 }
 
 void parse_race(mpq_file_stream& map, starcraft_map& scm)
@@ -243,9 +90,45 @@ void parse_tileset(mpq_file_stream& map, starcraft_map& scm)
 	read_data(map, scm.tileset);
 }
 
-void parse_map_data(mpq_file_stream& map, map_dimensions dimensions, uint16_t* map_data)
+void parse_map_data(mpq_file_stream& map, starcraft_map& scm)
 {
-	map.read(reinterpret_cast<char*>(map_data), sizeof(map_data[0]) * dimensions.width * dimensions.height);
+	map.read(reinterpret_cast<char*>(scm.map_data), sizeof(scm.map_data[0]) * scm.dimensions.width * scm.dimensions.height);
+	scm.tiles.resize(scm.dimensions.width * scm.dimensions.height);
+	scm.tiles_mega_tile_index.resize(scm.dimensions.width * scm.dimensions.height);
+
+	for (size_t i = 0; i != scm.dimensions.width * scm.dimensions.height; ++i) {
+		tile_id tile_id(scm.map_data[i]);
+		if (tile_id.group_index() >= scm.tileset_data.cv5.size())
+		{
+			tile_id = {};
+		}
+
+		auto tileGroup = scm.tileset_data.cv5.at(tile_id.group_index());
+		size_t megatile_index = tileGroup.mega_tile_index[tile_id.subtile_index()];
+		auto flagsToClear = tile_t::flag_walkable
+			| tile_t::flag_unwalkable
+			| tile_t::flag_very_high
+			| tile_t::flag_middle
+			| tile_t::flag_high
+			| tile_t::flag_partially_walkable;
+		int cv5_flags = tileGroup.flags & ~flagsToClear;
+		scm.tiles_mega_tile_index[i] = (uint16_t)megatile_index;
+		scm.tiles[i].flags = scm.mega_tile_flags.at(megatile_index) | cv5_flags;
+		if (tile_id.has_creep()) {
+			scm.tiles_mega_tile_index[i] |= 0x8000;
+			scm.tiles[i].flags |= tile_t::flag_has_creep;
+		}
+	}
+
+	tiles_flags_and(scm, 0, scm.dimensions.height - 2, 5, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
+	tiles_flags_or(scm, 0, scm.dimensions.height - 2, 5, 1, tile_t::flag_unbuildable);
+	tiles_flags_and(scm, scm.dimensions.width - 5, scm.dimensions.height - 2, 5, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
+	tiles_flags_or(scm, scm.dimensions.width - 5, scm.dimensions.height - 2, 5, 1, tile_t::flag_unbuildable);
+
+	tiles_flags_and(scm, 0, scm.dimensions.height - 1, scm.dimensions.width, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
+	tiles_flags_or(scm, 0, scm.dimensions.height - 1, scm.dimensions.width, 1, tile_t::flag_unbuildable);
+
+	// regions_create();
 }
 
 void parse_placed_units(mpq_file_stream& map, chunkheader header, std::vector<unit_data>& units)
@@ -264,9 +147,78 @@ void parse_fogofwar(mpq_file_stream& map, map_dimensions dimensions, uint8_t* ma
 	map.read(reinterpret_cast<char*>(map_data), dimensions.width * dimensions.height);
 }
 
-void parse_map(mpq_file_stream& map, starcraft_map_file& scm, starcraft_parse_status& status)
+void set_mega_tile_flags(starcraft_map& scm, tileset_data& tileset)
+{
+	scm.mega_tile_flags.resize(tileset.vf4.size());
+	for (size_t i = 0; i != scm.mega_tile_flags.size(); ++i) {
+		int flags = 0;
+		auto& mt = tileset.vf4[i];
+		int walkable_count = 0;
+		int middle_count = 0;
+		int high_count = 0;
+		int very_high_count = 0;
+		for (size_t y = 0; y < 4; ++y) {
+			for (size_t x = 0; x < 4; ++x) {
+				if (mt.flags[y * 4 + x] & vf4_entry::flag_walkable)
+				{
+					++walkable_count;
+				}
+
+				if (mt.flags[y * 4 + x] & vf4_entry::flag_middle)
+				{
+					++middle_count;
+				}
+
+				if (mt.flags[y * 4 + x] & vf4_entry::flag_high)
+				{
+					++high_count;
+				}
+
+				if (mt.flags[y * 4 + x] & vf4_entry::flag_very_high)
+				{
+					++very_high_count;
+				}
+			}
+		}
+
+		if (walkable_count > 12)
+		{
+			flags |= tile_t::flag_walkable;
+		}
+		else
+		{
+			flags |= tile_t::flag_unwalkable;
+		}
+
+		if (walkable_count && walkable_count != 0x10)
+		{
+			flags |= tile_t::flag_partially_walkable;
+		}
+
+		if (high_count < 12 && middle_count + high_count >= 12)
+		{
+			flags |= tile_t::flag_middle;
+		}
+
+		if (high_count >= 12)
+		{
+			flags |= tile_t::flag_high;
+		}
+
+		if (very_high_count)
+		{
+			flags |= tile_t::flag_very_high;
+		}
+
+		scm.mega_tile_flags[i] = flags;
+	}
+}
+
+void parse_map(mpq_file_stream& map, tileset_provider provider, starcraft_map_file& scm, starcraft_parse_status& status)
 {
 	ZeroMemory(&scm.map, sizeof(scm.map));
+	tileset_data tileset;
+	starcraft_tileset_parse_status tileset_status;
 	while (!map.eof() && map.good())
 	{
 		chunkheader header;
@@ -297,6 +249,15 @@ void parse_map(mpq_file_stream& map, starcraft_map_file& scm, starcraft_parse_st
 			break;
 		case to_code("ERA "):
 			parse_tileset(map, scm.map);
+			provider(scm.map.tileset, tileset, tileset_status);
+			if (tileset_status.error_code)
+			{
+				status.error_code = StarcraftMapParse_TilesetParseError;
+				return;
+			}
+
+			set_mega_tile_flags(scm.map, tileset);
+			scm.map.tileset_data = tileset;
 			break;
 		case to_code("DIM "):
 			read_data(map, scm.map.dimensions);
@@ -305,7 +266,8 @@ void parse_map(mpq_file_stream& map, starcraft_map_file& scm, starcraft_parse_st
 			parse_race(map, scm.map);
 			break;
 		case to_code("MTXM"):
-			parse_map_data(map, scm.map.dimensions, scm.map.map_data);
+			parse_map_data(map, scm.map);
+			// Now we could use tileset data during parsing phase
 			break;
 		case to_code("PUNI"):
 		case to_code("UPGR"):
@@ -360,7 +322,7 @@ void parse_map(mpq_file_stream& map, starcraft_map_file& scm, starcraft_parse_st
 
 	status.error_code = StarcraftMapParse_Success;
 }
-void parse_starcraft_map(const char* mapFile, starcraft_map_file& scm, starcraft_parse_status& status)
+void parse_starcraft_map(const char* mapFile, tileset_provider provider, starcraft_map_file& scm, starcraft_parse_status& status)
 {
 	HANDLE hArchive;
 	if (!SFileOpenArchive(mapFile, 0, MPQ_OPEN_READ_ONLY, &hArchive))
@@ -384,6 +346,6 @@ void parse_starcraft_map(const char* mapFile, starcraft_map_file& scm, starcraft
 		return;
 	}
 
-	parse_map(map, scm, status);
+	parse_map(map, provider, scm, status);
 	SFileCloseArchive(hArchive);
 }
