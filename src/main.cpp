@@ -15,7 +15,7 @@ string to_name(uint32_t code)
 
 void printUsage()
 {
-	cout << "scm2txt <mapfile> <sc_dir>" << endl;
+	cout << "scm2txt <mapfile> [<sc_dir>]" << endl;
 }
 
 struct map_type
@@ -258,7 +258,7 @@ void print(starcraft_map_file& scm)
 
 int main(int argc, char** argv)
 {
-	if (argc < 3)
+	if (argc < 2)
 	{
 		printUsage();
 		return -1;
@@ -268,8 +268,7 @@ int main(int argc, char** argv)
 	starcraft_map_file scm;
 	starcraft_parse_status status;
 
-	string starcraftDir(argv[2]);
-	auto tilesetProvider = [&](int tilesetIndex, tileset_data& tileset, starcraft_tileset_parse_status& tileset_status)
+	tileset_provider tilesetProviderFromBroodWarData = [&](int tilesetIndex, tileset_data& tileset, starcraft_tileset_parse_status& tileset_status)
 	{
 		parse_starcraft_tileset(argv[2], scm.map.tileset, tileset, tileset_status);
 		switch (tileset_status.error_code)
@@ -285,6 +284,9 @@ int main(int argc, char** argv)
 			break;
 		}
 	};
+	auto tilesetProvider = (argc < 3)
+		? load_standard_starcraft_tileset
+		: tilesetProviderFromBroodWarData;
 
 	cerr << "Opening '" << mapFile << "'..." << endl;
 	parse_starcraft_map(mapFile.c_str(), tilesetProvider, scm, status);

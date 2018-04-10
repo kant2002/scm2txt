@@ -31,6 +31,7 @@ constexpr int StarcraftTilesetParse_CV5Missing = 3;
 constexpr int StarcraftTilesetParse_VF4Missing = 4;
 constexpr int StarcraftTilesetParse_ExtractCV5Failed = 5;
 constexpr int StarcraftTilesetParse_ExtractVF4Failed = 6;
+constexpr int StarcraftTilesetParse_TilesetIndexOutOfRange = 7;
 
 struct starcraft_tileset_parse_status
 {
@@ -39,4 +40,5 @@ struct starcraft_tileset_parse_status
 
 typedef std::function<void(int tilesetIndex, tileset_data& tileset, starcraft_tileset_parse_status& status)> tileset_provider;
 
+void load_standard_starcraft_tileset(int tilesetIndex, tileset_data& tileset, starcraft_tileset_parse_status& status);
 void parse_starcraft_tileset(const char* starcraftDir, int tilesetIndex, tileset_data& tileset, starcraft_tileset_parse_status& status);

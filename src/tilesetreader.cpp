@@ -31,6 +31,30 @@ struct cv5_data_file_item
 	uint16_t mega_tile_index[16];
 };
 
+extern std::vector<vf4_entry> badlands_vf4;
+extern std::vector<cv5_entry> badlands_cv5;
+
+extern std::vector<vf4_entry> platform_vf4;
+extern std::vector<cv5_entry> platform_cv5;
+
+extern std::vector<vf4_entry> install_vf4;
+extern std::vector<cv5_entry> install_cv5;
+
+extern std::vector<vf4_entry> ashworld_vf4;
+extern std::vector<cv5_entry> ashworld_cv5;
+
+extern std::vector<vf4_entry> jungle_vf4;
+extern std::vector<cv5_entry> jungle_cv5;
+
+extern std::vector<vf4_entry> desert_vf4;
+extern std::vector<cv5_entry> desert_cv5;
+
+extern std::vector<vf4_entry> ice_vf4;
+extern std::vector<cv5_entry> ice_cv5;
+
+extern std::vector<vf4_entry> twilight_vf4;
+extern std::vector<cv5_entry> twilight_cv5;
+
 template< typename... Args >
 std::string format(const char* format, Args... args) {
 	int length = std::snprintf(nullptr, 0, format, args...);
@@ -52,6 +76,58 @@ std::string getTileSetCV5File(int tilesetIndex)
 std::string getTileSetVF4File(int tilesetIndex)
 {
 	return format("tileset\\%s.vf4", tileset_names[tilesetIndex]);
+}
+
+void load_standard_starcraft_tileset(int tilesetIndex, tileset_data& tileset, starcraft_tileset_parse_status& status)
+{
+	if (tilesetIndex < 0 || tilesetIndex > 7)
+	{
+		status.error_code = StarcraftTilesetParse_TilesetIndexOutOfRange;
+		return;
+	}
+
+	tileset.cv5.clear();
+	tileset.vf4.clear();
+	switch (tilesetIndex)
+	{
+	case 0:
+		copy(begin(badlands_cv5), end(badlands_cv5), back_inserter(tileset.cv5));
+		copy(begin(badlands_vf4), end(badlands_vf4), back_inserter(tileset.vf4));
+		break;
+	case 1:
+		copy(begin(platform_cv5), end(platform_cv5), back_inserter(tileset.cv5));
+		copy(begin(platform_vf4), end(platform_vf4), back_inserter(tileset.vf4));
+		break;
+	case 2:
+		copy(begin(install_cv5), end(install_cv5), back_inserter(tileset.cv5));
+		copy(begin(install_vf4), end(install_vf4), back_inserter(tileset.vf4));
+		break;
+	case 3:
+		copy(begin(ashworld_cv5), end(ashworld_cv5), back_inserter(tileset.cv5));
+		copy(begin(ashworld_vf4), end(ashworld_vf4), back_inserter(tileset.vf4));
+		break;
+	case 4:
+		copy(begin(jungle_cv5), end(jungle_cv5), back_inserter(tileset.cv5));
+		copy(begin(jungle_vf4), end(jungle_vf4), back_inserter(tileset.vf4));
+		break;
+	case 5:
+		copy(begin(desert_cv5), end(desert_cv5), back_inserter(tileset.cv5));
+		copy(begin(desert_vf4), end(desert_vf4), back_inserter(tileset.vf4));
+		break;
+	case 6:
+		copy(begin(ice_cv5), end(ice_cv5), back_inserter(tileset.cv5));
+		copy(begin(ice_vf4), end(ice_vf4), back_inserter(tileset.vf4));
+		break;
+	case 7:
+		copy(begin(twilight_cv5), end(twilight_cv5), back_inserter(tileset.cv5));
+		copy(begin(twilight_vf4), end(twilight_vf4), back_inserter(tileset.vf4));
+		break;
+	default:
+		status.error_code = StarcraftTilesetParse_TilesetIndexOutOfRange;
+		return;
+	}
+
+	status.error_code = StarcraftTilesetParse_Success;
 }
 
 void parse_starcraft_tileset(const char* starcraftDir, int tilesetIndex, tileset_data& tileset, starcraft_tileset_parse_status& status)

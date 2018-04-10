@@ -1,5 +1,6 @@
 project (scm2txt)
 cmake_minimum_required (VERSION 3.0)
+enable_testing()
 
 if (NOT EXISTS "${scm2txt_SOURCE_DIR}/dependencies/StormLib/CMakeLists.txt")
     message(FATAL_ERROR
@@ -13,3 +14,4 @@ endif()
 
 add_subdirectory(dependencies/StormLib)
 add_subdirectory (src)
+add_subdirectory (tests)
