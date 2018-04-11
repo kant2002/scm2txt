@@ -349,3 +349,50 @@ void parse_starcraft_map(const char* mapFile, tileset_provider provider, starcra
 	parse_map(map, provider, scm, status);
 	SFileCloseArchive(hArchive);
 }
+
+bool starcraft_map_file::is_walkable(int walk_x, int walk_y)
+{
+	if (walk_y >= map.dimensions.height * 4 - 4)
+	{
+		return false;
+	}
+
+	if (walk_y >= map.dimensions.height * 4 - 8 && (walk_x < 20 || walk_x >= map.dimensions.width * 4 - 20))
+	{
+		return false;
+	}
+
+	// coordinates of the tile on the map.
+	int tx = walk_x / 4;
+	int ty = walk_y / 4;
+
+	// coordinates of walk position inside tile
+	int mx = walk_x % 4;
+	int my = walk_y % 4;
+
+	auto index = tx + ty * map.dimensions.width;
+	auto& tile = info.tiles[index];
+	if (tile.flags & tile_t::flag_has_creep)
+	{
+		return true;
+	}
+
+	if (tile.flags & tile_t::flag_partially_walkable) {
+		tile_id tile_id(map.map_data[index]);
+		auto tile_cv5 = info.tileset_data.cv5.at(tile_id.group_index());;
+		size_t megatile_index = tile_cv5.mega_tile_index[tile_id.subtile_index()];
+
+		int flags = info.tileset_data.vf4.at(megatile_index).flags[mx + my * 4];
+		if (flags & vf4_entry::flag_walkable)
+		{
+			return true;
+		}
+	}
+
+	if (tile.flags & tile_t::flag_walkable)
+	{
+		return true;
+	}
+
+	return false;
+}

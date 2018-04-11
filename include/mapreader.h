@@ -110,6 +110,8 @@ struct starcraft_map_file
 	starcraft_map map;
 	starcraft_map_info info;
 	std::vector<unit_data> units;
+
+	bool is_walkable(int walk_x, int walk_y);
 };
 
 constexpr uint16_t MapVersionStarcraft = 59;
