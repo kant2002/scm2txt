@@ -106,6 +106,14 @@ public:
 			hFile = NULL;
 		}
 	}
+	~mpq_file_streambuf()
+	{
+		if (hFile != NULL)
+		{
+			SFileCloseFile(hFile);
+			hFile = NULL;
+		}
+	}
 
 	bool isValid() const { return hFile != NULL; }
 

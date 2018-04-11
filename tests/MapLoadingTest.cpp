@@ -112,18 +112,18 @@ BOOST_AUTO_TEST_CASE(WalkableFlagCalculatedCorrectly)
 {
 	starcraft_map_file scm;
 	ZeroMemory(&scm.map, sizeof(scm.map));
-	//starcraft_parse_status status;
-	//parse_starcraft_map("data/simplemap/map.scm", load_standard_starcraft_tileset, scm, status);
+	starcraft_parse_status status;
+	parse_starcraft_map("data/simplemap/map.scm", load_standard_starcraft_tileset, scm, status);
 
-	/*std::vector<bool> expectedWalkableValues;
+	std::vector<bool> expectedWalkableValues;
 	ifstream expectedWalkableFile("data/simplemap/walkable.txt");
 	BOOST_TEST(load_map_bool(expectedWalkableFile, expectedWalkableValues), "Loading of walkable data failed");
 		
 	BOOST_TEST(status.error_code == StarcraftMapParse_Success, "Map file loading return status " << status.error_code);
 	BOOST_TEST(scm.map.dimensions.width == 64, "Width of the map should be 64, but get " << scm.map.dimensions.width);
 	BOOST_TEST(scm.map.dimensions.height == 64, "Height of the map should be 64, but get " << scm.map.dimensions.height);
-	*/
-	// verify_walkable(scm, expectedWalkableValues);
+	
+	verify_walkable(scm, expectedWalkableValues);
 }
 
 BOOST_AUTO_TEST_CASE(BuildableFlagCalculatedCorrectly, *utf::disabled())

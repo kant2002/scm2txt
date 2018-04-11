@@ -338,15 +338,18 @@ void parse_starcraft_map(const char* mapFile, tileset_provider provider, starcra
 		return;
 	}
 
-	mpq_file_stream map(hArchive, SCM_INTERNAL_FILE);
-	if (!map.component()->isValid())
 	{
-		status.error_code = StarcraftMapParse_ExtractMapFailed;
-		SFileCloseArchive(hArchive);
-		return;
-	}
+		mpq_file_stream map(hArchive, SCM_INTERNAL_FILE);
+		if (!map.component()->isValid())
+		{
+			status.error_code = StarcraftMapParse_ExtractMapFailed;
+			SFileCloseArchive(hArchive);
+			return;
+		}
 
-	parse_map(map, provider, scm, status);
+		parse_map(map, provider, scm, status);
+	}
+	
 	SFileCloseArchive(hArchive);
 }
 
