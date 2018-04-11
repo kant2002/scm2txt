@@ -91,13 +91,16 @@ struct starcraft_map
 	uint8_t races[12];
 
 	uint16_t tileset;
-	tileset_data tileset_data;
-	std::vector<uint16_t> mega_tile_flags;
 
 	map_dimensions dimensions = { 0, 0 };
 	uint16_t map_data[256 * 256]; // same as tschmoo gfx_tiles
 	uint8_t map_visibility[256 * 256];
+};
 
+struct starcraft_map_info
+{
+	tileset_data tileset_data;
+	std::vector<uint16_t> mega_tile_flags;
 	std::vector<tile_t> tiles;
 	std::vector<uint16_t> tiles_mega_tile_index;
 };
@@ -105,6 +108,7 @@ struct starcraft_map
 struct starcraft_map_file
 {
 	starcraft_map map;
+	starcraft_map_info info;
 	std::vector<unit_data> units;
 };
 

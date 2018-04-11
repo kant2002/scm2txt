@@ -5,7 +5,7 @@
 
 struct cv5_entry {
 	uint16_t flags;
-	std::array<uint16_t, 16> mega_tile_index;
+	std::array<uint16_t, 16> mega_tile_index; // Same as BW::TileType::megaTileRef
 };
 struct vf4_entry {
 	enum flags_t : uint16_t {

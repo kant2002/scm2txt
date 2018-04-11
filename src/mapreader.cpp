@@ -48,17 +48,17 @@ void skip_header(mpq_file_stream& map, chunkheader& header)
 #endif
 }
 
-void tiles_flags_and(starcraft_map& scm, size_t offset_x, size_t offset_y, size_t width, size_t height, int flags) {
+void tiles_flags_and(starcraft_map& scm, starcraft_map_info& info, size_t offset_x, size_t offset_y, size_t width, size_t height, int flags) {
 	for (size_t y = offset_y; y != offset_y + height; ++y) {
 		for (size_t x = offset_x; x != offset_x + width; ++x) {
-			scm.tiles[x + y * scm.dimensions.width].flags &= flags;
+			info.tiles[x + y * scm.dimensions.width].flags &= flags;
 		}
 	}
 }
-void tiles_flags_or(starcraft_map& scm, size_t offset_x, size_t offset_y, size_t width, size_t height, int flags) {
+void tiles_flags_or(starcraft_map& scm, starcraft_map_info& info, size_t offset_x, size_t offset_y, size_t width, size_t height, int flags) {
 	for (size_t y = offset_y; y != offset_y + height; ++y) {
 		for (size_t x = offset_x; x != offset_x + width; ++x) {
-			scm.tiles[x + y * scm.dimensions.width].flags |= flags;
+			info.tiles[x + y * scm.dimensions.width].flags |= flags;
 		}
 	}
 }
@@ -90,20 +90,20 @@ void parse_tileset(mpq_file_stream& map, starcraft_map& scm)
 	read_data(map, scm.tileset);
 }
 
-void parse_map_data(mpq_file_stream& map, starcraft_map& scm)
+void parse_map_data(mpq_file_stream& map, starcraft_map& scm, starcraft_map_info& info)
 {
 	map.read(reinterpret_cast<char*>(scm.map_data), sizeof(scm.map_data[0]) * scm.dimensions.width * scm.dimensions.height);
-	scm.tiles.resize(scm.dimensions.width * scm.dimensions.height);
-	scm.tiles_mega_tile_index.resize(scm.dimensions.width * scm.dimensions.height);
+	info.tiles.resize(scm.dimensions.width * scm.dimensions.height);
+	info.tiles_mega_tile_index.resize(scm.dimensions.width * scm.dimensions.height);
 
 	for (size_t i = 0; i != scm.dimensions.width * scm.dimensions.height; ++i) {
 		tile_id tile_id(scm.map_data[i]);
-		if (tile_id.group_index() >= scm.tileset_data.cv5.size())
+		if (tile_id.group_index() >= info.tileset_data.cv5.size())
 		{
 			tile_id = {};
 		}
 
-		auto tileGroup = scm.tileset_data.cv5.at(tile_id.group_index());
+		auto tileGroup = info.tileset_data.cv5.at(tile_id.group_index());
 		size_t megatile_index = tileGroup.mega_tile_index[tile_id.subtile_index()];
 		auto flagsToClear = tile_t::flag_walkable
 			| tile_t::flag_unwalkable
@@ -112,21 +112,21 @@ void parse_map_data(mpq_file_stream& map, starcraft_map& scm)
 			| tile_t::flag_high
 			| tile_t::flag_partially_walkable;
 		int cv5_flags = tileGroup.flags & ~flagsToClear;
-		scm.tiles_mega_tile_index[i] = (uint16_t)megatile_index;
-		scm.tiles[i].flags = scm.mega_tile_flags.at(megatile_index) | cv5_flags;
+		info.tiles_mega_tile_index[i] = (uint16_t)megatile_index;
+		info.tiles[i].flags = info.mega_tile_flags.at(megatile_index) | cv5_flags;
 		if (tile_id.has_creep()) {
-			scm.tiles_mega_tile_index[i] |= 0x8000;
-			scm.tiles[i].flags |= tile_t::flag_has_creep;
+			info.tiles_mega_tile_index[i] |= 0x8000;
+			info.tiles[i].flags |= tile_t::flag_has_creep;
 		}
 	}
 
-	tiles_flags_and(scm, 0, scm.dimensions.height - 2, 5, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
-	tiles_flags_or(scm, 0, scm.dimensions.height - 2, 5, 1, tile_t::flag_unbuildable);
-	tiles_flags_and(scm, scm.dimensions.width - 5, scm.dimensions.height - 2, 5, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
-	tiles_flags_or(scm, scm.dimensions.width - 5, scm.dimensions.height - 2, 5, 1, tile_t::flag_unbuildable);
+	tiles_flags_and(scm, info, 0, scm.dimensions.height - 2, 5, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
+	tiles_flags_or(scm, info, 0, scm.dimensions.height - 2, 5, 1, tile_t::flag_unbuildable);
+	tiles_flags_and(scm, info, scm.dimensions.width - 5, scm.dimensions.height - 2, 5, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
+	tiles_flags_or(scm, info, scm.dimensions.width - 5, scm.dimensions.height - 2, 5, 1, tile_t::flag_unbuildable);
 
-	tiles_flags_and(scm, 0, scm.dimensions.height - 1, scm.dimensions.width, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
-	tiles_flags_or(scm, 0, scm.dimensions.height - 1, scm.dimensions.width, 1, tile_t::flag_unbuildable);
+	tiles_flags_and(scm, info, 0, scm.dimensions.height - 1, scm.dimensions.width, 1, ~(tile_t::flag_walkable | tile_t::flag_has_creep | tile_t::flag_partially_walkable));
+	tiles_flags_or(scm, info, 0, scm.dimensions.height - 1, scm.dimensions.width, 1, tile_t::flag_unbuildable);
 
 	// regions_create();
 }
@@ -147,10 +147,10 @@ void parse_fogofwar(mpq_file_stream& map, map_dimensions dimensions, uint8_t* ma
 	map.read(reinterpret_cast<char*>(map_data), dimensions.width * dimensions.height);
 }
 
-void set_mega_tile_flags(starcraft_map& scm, tileset_data& tileset)
+void set_mega_tile_flags(starcraft_map_info& info, tileset_data& tileset)
 {
-	scm.mega_tile_flags.resize(tileset.vf4.size());
-	for (size_t i = 0; i != scm.mega_tile_flags.size(); ++i) {
+	info.mega_tile_flags.resize(tileset.vf4.size());
+	for (size_t i = 0; i != info.mega_tile_flags.size(); ++i) {
 		int flags = 0;
 		auto& mt = tileset.vf4[i];
 		int walkable_count = 0;
@@ -210,7 +210,7 @@ void set_mega_tile_flags(starcraft_map& scm, tileset_data& tileset)
 			flags |= tile_t::flag_very_high;
 		}
 
-		scm.mega_tile_flags[i] = flags;
+		info.mega_tile_flags[i] = flags;
 	}
 }
 
@@ -256,8 +256,8 @@ void parse_map(mpq_file_stream& map, tileset_provider provider, starcraft_map_fi
 				return;
 			}
 
-			set_mega_tile_flags(scm.map, tileset);
-			scm.map.tileset_data = tileset;
+			set_mega_tile_flags(scm.info, tileset);
+			scm.info.tileset_data = tileset;
 			break;
 		case to_code("DIM "):
 			read_data(map, scm.map.dimensions);
@@ -266,7 +266,7 @@ void parse_map(mpq_file_stream& map, tileset_provider provider, starcraft_map_fi
 			parse_race(map, scm.map);
 			break;
 		case to_code("MTXM"):
-			parse_map_data(map, scm.map);
+			parse_map_data(map, scm.map, scm.info);
 			// Now we could use tileset data during parsing phase
 			break;
 		case to_code("PUNI"):

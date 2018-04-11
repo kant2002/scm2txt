@@ -160,14 +160,14 @@ std::string print_tile(tile_t tile)
 	return to_string(tile.visible) + "_" + to_string(tile.explored) + "_" + to_string(tile.flags);
 }
 
-void print_map_data(starcraft_map& scm)
+void print_map_data(starcraft_map_file& scm)
 {
 	int counter = 0;
 	cout << "MAP" << endl;
-	cout << scm.dimensions.width << "," << scm.dimensions.height << endl;
-	for (auto y = 0; y < scm.dimensions.height; y++)
+	cout << scm.map.dimensions.width << "," << scm.map.dimensions.height << endl;
+	for (auto y = 0; y < scm.map.dimensions.height; y++)
 	{
-		for (auto x = 0; x < scm.dimensions.width; x++)
+		for (auto x = 0; x < scm.map.dimensions.width; x++)
 		{
 			if (x != 0)
 			{
@@ -175,7 +175,7 @@ void print_map_data(starcraft_map& scm)
 			}
 
 			//cout << scm.map_data[counter];
-			cout << print_tile(scm.tiles[counter]);
+			cout << print_tile(scm.info.tiles[counter]);
 			counter++;
 		}
 
@@ -251,7 +251,7 @@ void print(starcraft_map_file& scm)
 	print_player_types(scm.map);
 	print_tileset(scm.map);
 	print_race(scm.map);
-	print_map_data(scm.map);
+	print_map_data(scm);
 	print_placed_units(scm.units);
 	print_fogofwar(scm.map);
 }

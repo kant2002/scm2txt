@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 
 	for (auto i = 0; i < 8; i++)
 	{
-		parse_starcraft_tileset(argv[1], 0, tileset, tileset_status);
+		parse_starcraft_tileset(argv[1], i, tileset, tileset_status);
 		switch (tileset_status.error_code)
 		{
 		case StarcraftTilesetParse_FileOpenError:
