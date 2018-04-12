@@ -2,6 +2,7 @@
 #define BOOST_TEST_MODULE MapLoadingTest
 #include <boost/test/included/unit_test.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/test/data/test_case.hpp>
 #include <string>
 #include <mapreader.h>
 #include <filesystem>
@@ -109,38 +110,31 @@ void verify_buildable(starcraft_map_file& scm, std::vector<bool>& expectedBuilda
 }
 
 BOOST_AUTO_TEST_SUITE(suite1, *utf::enabled())
-BOOST_AUTO_TEST_CASE(WalkableFlagCalculatedCorrectly)
+
+namespace {
+	std::array<char const *, 2> const mapNames = {
+		"simplemap",
+		"BloodBath"
+	};
+}
+
+BOOST_DATA_TEST_CASE(WalkableFlagCalculatedCorrectly, mapNames, map)
 {
 	starcraft_map_file scm;
 	ZeroMemory(&scm.map, sizeof(scm.map));
 	starcraft_parse_status status;
-	parse_starcraft_map("data/simplemap/map.scm", load_standard_starcraft_tileset, scm, status);
+	string mapTestFile = string("data/") + map + "/map.scm";
+	parse_starcraft_map(mapTestFile.c_str(), load_standard_starcraft_tileset, scm, status);
 
 	std::vector<bool> expectedWalkableValues;
-	ifstream expectedWalkableFile("data/simplemap/walkable.txt");
+	string expectedWalkableFileName = string("data/") + map + "/walkable.txt";
+	ifstream expectedWalkableFile(expectedWalkableFileName);
 	BOOST_TEST(load_map_bool(expectedWalkableFile, expectedWalkableValues), "Loading of walkable data failed");
 		
 	BOOST_TEST(status.error_code == StarcraftMapParse_Success, "Map file loading return status " << status.error_code);
 	BOOST_TEST(scm.map.dimensions.width == 64, "Width of the map should be 64, but get " << scm.map.dimensions.width);
 	BOOST_TEST(scm.map.dimensions.height == 64, "Height of the map should be 64, but get " << scm.map.dimensions.height);
 	
-	verify_walkable(scm, expectedWalkableValues);
-}
-BOOST_AUTO_TEST_CASE(WalkableFlagCalculatedCorrectly2)
-{
-	starcraft_map_file scm;
-	ZeroMemory(&scm.map, sizeof(scm.map));
-	starcraft_parse_status status;
-	parse_starcraft_map("data/BloodBath/map.scm", load_standard_starcraft_tileset, scm, status);
-
-	std::vector<bool> expectedWalkableValues;
-	ifstream expectedWalkableFile("data/BloodBath/walkable.txt");
-	BOOST_TEST(load_map_bool(expectedWalkableFile, expectedWalkableValues), "Loading of walkable data failed");
-
-	BOOST_TEST(status.error_code == StarcraftMapParse_Success, "Map file loading return status " << status.error_code);
-	BOOST_TEST(scm.map.dimensions.width == 64, "Width of the map should be 64, but get " << scm.map.dimensions.width);
-	BOOST_TEST(scm.map.dimensions.height == 64, "Height of the map should be 64, but get " << scm.map.dimensions.height);
-
 	verify_walkable(scm, expectedWalkableValues);
 }
 
