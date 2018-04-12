@@ -390,6 +390,8 @@ bool starcraft_map_file::is_walkable(int walk_x, int walk_y)
 		{
 			return true;
 		}
+
+		return false;
 	}
 
 	if (tile.flags & tile_t::flag_walkable)
