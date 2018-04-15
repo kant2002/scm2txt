@@ -112,28 +112,46 @@ void verify_buildable(starcraft_map_file& scm, std::vector<bool>& expectedBuilda
 BOOST_AUTO_TEST_SUITE(suite1, *utf::enabled())
 
 namespace {
-	std::array<char const *, 2> const mapNames = {
+	constexpr int MapsCount = 4;
+
+	std::array<char const *, MapsCount> const mapNames = {
 		"simplemap",
-		"BloodBath"
+		"BloodBath",
+		"faceoff",
+		"waterworld",
+	};
+	std::array<int, MapsCount> mapWidths = {
+		64,
+		64,
+		128,
+		64,
+	};
+	std::array<int, MapsCount> mapHeights = {
+		64,
+		64,
+		96,
+		64,
 	};
 }
 
-BOOST_DATA_TEST_CASE(WalkableFlagCalculatedCorrectly, mapNames, map)
+BOOST_DATA_TEST_CASE(WalkableFlagCalculatedCorrectly,
+	mapNames ^ mapWidths ^ mapHeights,
+	map, expectedWidth, expectedHeight)
 {
 	starcraft_map_file scm;
 	ZeroMemory(&scm.map, sizeof(scm.map));
 	starcraft_parse_status status;
 	string mapTestFile = string("data/") + map + "/map.scm";
 	parse_starcraft_map(mapTestFile.c_str(), load_standard_starcraft_tileset, scm, status);
+	BOOST_TEST(status.error_code == StarcraftMapParse_Success, "Map file loading return status " << status.error_code);
 
 	std::vector<bool> expectedWalkableValues;
 	string expectedWalkableFileName = string("data/") + map + "/walkable.txt";
 	ifstream expectedWalkableFile(expectedWalkableFileName);
 	BOOST_TEST(load_map_bool(expectedWalkableFile, expectedWalkableValues), "Loading of walkable data failed");
 		
-	BOOST_TEST(status.error_code == StarcraftMapParse_Success, "Map file loading return status " << status.error_code);
-	BOOST_TEST(scm.map.dimensions.width == 64, "Width of the map should be 64, but get " << scm.map.dimensions.width);
-	BOOST_TEST(scm.map.dimensions.height == 64, "Height of the map should be 64, but get " << scm.map.dimensions.height);
+	BOOST_TEST(scm.map.dimensions.width == expectedWidth, "Width of the map should be " << expectedWidth << ", but get " << scm.map.dimensions.width);
+	BOOST_TEST(scm.map.dimensions.height == expectedHeight, "Height of the map should be " << expectedHeight << ", but get " << scm.map.dimensions.height);
 	
 	verify_walkable(scm, expectedWalkableValues);
 }

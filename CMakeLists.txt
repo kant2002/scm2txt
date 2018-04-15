@@ -1,6 +1,7 @@
 project (scm2txt)
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.1)
 enable_testing()
+set (CMAKE_CXX_STANDARD 11)
 
 if (NOT EXISTS "${scm2txt_SOURCE_DIR}/dependencies/StormLib/CMakeLists.txt")
     message(FATAL_ERROR
