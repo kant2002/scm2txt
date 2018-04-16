@@ -6,6 +6,7 @@
 #include <string>
 #include <mapreader.h>
 #include <filesystem>
+#include <bwgame.h>
 using namespace std;
 namespace utf = boost::unit_test;
 
@@ -61,6 +62,35 @@ void verify_walkable(starcraft_map_file& scm, std::vector<bool>& expectedWalkabl
 				int ty = y / 4;
 				auto index = tx + ty * scm.map.dimensions.width;
 				BOOST_TEST(currentWalkable == false, "Item with index W(" << x << "," << y << ") T(" << tx << "," << ty << ") should be non walkable (" << scm.map.map_data[index] << ")");
+			}
+
+			i++;
+		}
+	}
+}
+
+void verify_walkable(bwgame::game_load_functions& scm, std::vector<bool>& expectedWalkableValues)
+{
+	size_t i = 0;
+	for (auto y = 0; y < scm.st.game->map_walk_height; y++)
+	{
+		for (auto x = 0; x < scm.st.game->map_walk_width; x++)
+		{
+			auto expectedWalkable = expectedWalkableValues[i];
+			auto currentWalkable = scm.is_walkable(bwgame::xy(8 * x, 8 * y));
+			if (expectedWalkable)
+			{
+				int tx = x / 4;
+				int ty = y / 4;
+				auto index = tx + ty * scm.st.game->map_tile_width;
+				BOOST_TEST(currentWalkable == true, "Item with position W(" << x << "," << y << ") T(" << tx << "," << ty << ") should be walkable");
+			}
+			else
+			{
+				int tx = x / 4;
+				int ty = y / 4;
+				auto index = tx + ty * scm.st.game->map_tile_width;
+				BOOST_TEST(currentWalkable == false, "Item with index W(" << x << "," << y << ") T(" << tx << "," << ty << ") should be non walkable");
 			}
 
 			i++;
@@ -154,6 +184,34 @@ BOOST_DATA_TEST_CASE(WalkableFlagCalculatedCorrectly,
 	BOOST_TEST(scm.map.dimensions.height == expectedHeight, "Height of the map should be " << expectedHeight << ", but get " << scm.map.dimensions.height);
 	
 	verify_walkable(scm, expectedWalkableValues);
+}
+
+BOOST_DATA_TEST_CASE(WalkableFlagCalculatedCorrectly2,
+	mapNames ^ mapWidths ^ mapHeights,
+	map, expectedWidth, expectedHeight)
+{
+const char* data_path = "D:\\Games\\Starcraft\\sc1.6.1\\Brood War";
+bwgame::global_state gs;
+bwgame::global_init(gs, bwgame::data_loading::data_files_directory(data_path));
+
+bwgame::game_state game_st;
+bwgame::state s;
+s.global = &gs;
+s.game = &game_st;
+bwgame::game_load_functions loader(s);
+string mapTestFile = string("data/") + map + "/map.scm";
+//loader.load_map_file(mapTestFile.c_str());
+loader.load_map_file("data/waterworld/map.scm");
+
+	std::vector<bool> expectedWalkableValues;
+	string expectedWalkableFileName = string("data/") + map + "/walkable.txt";
+	ifstream expectedWalkableFile(expectedWalkableFileName);
+	BOOST_TEST(load_map_bool(expectedWalkableFile, expectedWalkableValues), "Loading of walkable data failed");
+
+	BOOST_TEST(s.game->map_tile_width, "Width of the map should be " << expectedWidth << ", but get " << s.game->map_tile_width);
+	BOOST_TEST(s.game->map_tile_height == expectedHeight, "Height of the map should be " << expectedHeight << ", but get " << s.game->map_tile_height);
+
+	verify_walkable(loader, expectedWalkableValues);
 }
 
 BOOST_AUTO_TEST_CASE(BuildableFlagCalculatedCorrectly, *utf::disabled())

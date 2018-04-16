@@ -20,6 +20,7 @@ foreach(testSrc ${BOOST_TEST_SRCS})
 		${testSrc})
 	target_include_directories(${testName} BEFORE PUBLIC
 		"../include/"
+	    "${scm2txt_SOURCE_DIR}/dependencies/openbw/"
 	)
 
     #link to Boost libraries AND your targets and dependencies

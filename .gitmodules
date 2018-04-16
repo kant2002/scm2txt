@@ -1,3 +1,6 @@
 [submodule "dependencies/StormLib"]
 	path = dependencies/StormLib
 	url = https://github.com/ladislav-zezula/StormLib
+[submodule "dependencies/openbw"]
+	path = dependencies/openbw
+	url = https://github.com/OpenBW/openbw

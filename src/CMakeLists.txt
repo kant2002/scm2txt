@@ -1,5 +1,9 @@
-include_directories("${scm2txt_SOURCE_DIR}/dependencies/StormLib/src/")
+include_directories(
+	"${scm2txt_SOURCE_DIR}/dependencies/StormLib/src/"
+	"${scm2txt_SOURCE_DIR}/dependencies/openbw/"
+)
 
+add_definitions(-DNOMINMAX)
 find_package(Boost 1.68.0)
 if (Boost_FOUND)
 	include_directories(${Boost_INCLUDE_DIRS})

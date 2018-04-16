@@ -3,6 +3,7 @@
 #include <iostream>
 #include <StormLib.h>
 #include "mpq.h"
+//#include <bwgame.h>
 using namespace std;
 
 constexpr uint32_t to_code(char section_name[4])
